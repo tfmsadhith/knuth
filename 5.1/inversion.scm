@@ -1,4 +1,4 @@
-;; Time-stamp: <2026-03-20 17:52:03 kim>
+;; Time-stamp: <2026-03-20 23:25:35 kim>
 
 ;; Run on Chez Scheme 10.2.0
 
@@ -32,6 +32,7 @@
 
 ;; This is in O(n), but it is indispensable for
 ;; debugging purposes.
+
 (define (is-inversion-table? table)
   (letrec ([visit (lambda (table n)
 		    (if (null? table)
@@ -68,6 +69,7 @@
        ;; This is the example in the text Knuth uses.
        (equal? (candidate (list 2 3 6 4 0 2 2 1 0)) (list 4 8 0 7 1 5 3 6 2))))
 
+;; TODO: Implement a tail-recursive version.
 (define (insert vs i n)
   (letrec ([visit (lambda (vs n)
 		    (if (zero? n)
@@ -135,3 +137,64 @@
 ;; All of the above algorithms are in O(n^2)
 ;; there exist O(nlogn) algorithms based on
 ;; binary search trees.
+
+;; Next, we want to be able to go from permutations to
+;; inversion-tables. Specifically, we consider permutations
+;; of (iota n). (Knuth hasn't introduced multi-set permutations
+;; yet!)
+
+;; TODO: Compose the two functions to get the identity for more
+;;       tests.
+
+(define (test-perm-to-inv candidate)
+  (and (equal? (candidate '()) '())
+     (equal? (candidate '(0)) '(0))
+     (equal? (candidate '(0 1)) '(0 0))
+     (equal? (candidate '(0 1 2)) '(0 0 0))
+     (equal? (candidate '(0 1 2 3)) '(0 0 0 0))
+     (equal? (candidate '(0 1 2 3 4)) '(0 0 0 0 0))
+     (equal? (candidate '(0 1 2 3 4 5)) '(0 0 0 0 0 0))
+     (equal? (candidate '(0)) '(0))
+     (equal? (candidate '(1 0)) '(1 0))
+     (equal? (candidate '(2 1 0)) '(2 1 0))
+     (equal? (candidate '(3 2 1 0)) '(3 2 1 0))
+     (equal? (candidate '(4 3 2 1 0)) '(4 3 2 1 0))
+     (equal? (candidate '(5 4 3 2 1 0)) '(5 4 3 2 1 0))
+     (equal? (candidate '(4 3 1 2 0)) '(4 2 2 1 0))
+     (equal? (candidate '(4 2 1 0 3)) '(3 2 1 1 0))
+     (equal? (candidate '(4 5 2 3 8 6 7 0 1)) '(7 7 2 2 0 0 1 1 0))
+     (equal? (candidate '(0 8 1 7 2 6 3 5 4)) '(0 1 2 3 4 3 2 1 0))
+     ;; These are from exercise 5.1.1.1.
+     (equal? (candidate '(1 6 2 4 3 0 7 5)) '(5 0 1 2 1 2 0 0))
+     (equal? (candidate '(1 6 0 7 3 4 8 2 5)) '(2 0 5 2 2 3 0 0 0))
+     ;; This is the example in the text Knuth uses.
+     (equal? (candidate (list 4 8 0 7 1 5 3 6 2)) (list 2 3 6 4 0 2 2 1 0))))
+  
+;; A simple algorithm in O(n^2).
+
+;; Scans a list until we find i and
+;; counts how many elements were greater
+;; than i.
+
+(define (more-than-i i vs)
+  (letrec ([visit (lambda (vs acc)
+		    (if (null? vs)
+			(errorf 'more-than-i "i was not in the list")
+			(let ([v (car vs)]
+			      [vss (cdr vs)])
+			  (if (equal? v i)
+			      acc
+			      (if (> v i)
+				  (visit vss (+ acc 1))
+				  (visit vss acc))))))])
+    (visit vs 0)))
+	   
+;; TODO: Fuse iota and length.
+
+(define (perm-to-inv vs)
+  (map (lambda (i) (more-than-i i vs)) (iota (length vs))))
+  
+(unless (time (test-perm-to-inv perm-to-inv))
+  (errorf 'perm-to-inv "failed its unit tests."))
+
+;; A better algorithm is based on modifying merge sort.
