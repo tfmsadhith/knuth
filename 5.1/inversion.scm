@@ -1,4 +1,4 @@
-;; Time-stamp: <2026-03-20 23:25:35 kim>
+;; Time-stamp: <2026-03-21 16:32:05 kim>
 
 ;; Run on Chez Scheme 10.2.0
 
@@ -79,7 +79,7 @@
 			    (let ([v (car vs)]
 				  [vss (cdr vs)])
 			      (cons v (visit vss (- n 1)))))))])
-		  (visit vs n)))
+    (visit vs n)))
 
 (define (inv-to-perm table)
   (if (is-inversion-table? table)
@@ -148,28 +148,28 @@
 
 (define (test-perm-to-inv candidate)
   (and (equal? (candidate '()) '())
-     (equal? (candidate '(0)) '(0))
-     (equal? (candidate '(0 1)) '(0 0))
-     (equal? (candidate '(0 1 2)) '(0 0 0))
-     (equal? (candidate '(0 1 2 3)) '(0 0 0 0))
-     (equal? (candidate '(0 1 2 3 4)) '(0 0 0 0 0))
-     (equal? (candidate '(0 1 2 3 4 5)) '(0 0 0 0 0 0))
-     (equal? (candidate '(0)) '(0))
-     (equal? (candidate '(1 0)) '(1 0))
-     (equal? (candidate '(2 1 0)) '(2 1 0))
-     (equal? (candidate '(3 2 1 0)) '(3 2 1 0))
-     (equal? (candidate '(4 3 2 1 0)) '(4 3 2 1 0))
-     (equal? (candidate '(5 4 3 2 1 0)) '(5 4 3 2 1 0))
-     (equal? (candidate '(4 3 1 2 0)) '(4 2 2 1 0))
-     (equal? (candidate '(4 2 1 0 3)) '(3 2 1 1 0))
-     (equal? (candidate '(4 5 2 3 8 6 7 0 1)) '(7 7 2 2 0 0 1 1 0))
-     (equal? (candidate '(0 8 1 7 2 6 3 5 4)) '(0 1 2 3 4 3 2 1 0))
-     ;; These are from exercise 5.1.1.1.
-     (equal? (candidate '(1 6 2 4 3 0 7 5)) '(5 0 1 2 1 2 0 0))
-     (equal? (candidate '(1 6 0 7 3 4 8 2 5)) '(2 0 5 2 2 3 0 0 0))
-     ;; This is the example in the text Knuth uses.
-     (equal? (candidate (list 4 8 0 7 1 5 3 6 2)) (list 2 3 6 4 0 2 2 1 0))))
-  
+       (equal? (candidate '(0)) '(0))
+       (equal? (candidate '(0 1)) '(0 0))
+       (equal? (candidate '(0 1 2)) '(0 0 0))
+       (equal? (candidate '(0 1 2 3)) '(0 0 0 0))
+       (equal? (candidate '(0 1 2 3 4)) '(0 0 0 0 0))
+       (equal? (candidate '(0 1 2 3 4 5)) '(0 0 0 0 0 0))
+       (equal? (candidate '(0)) '(0))
+       (equal? (candidate '(1 0)) '(1 0))
+       (equal? (candidate '(2 1 0)) '(2 1 0))
+       (equal? (candidate '(3 2 1 0)) '(3 2 1 0))
+       (equal? (candidate '(4 3 2 1 0)) '(4 3 2 1 0))
+       (equal? (candidate '(5 4 3 2 1 0)) '(5 4 3 2 1 0))
+       (equal? (candidate '(4 3 1 2 0)) '(4 2 2 1 0))
+       (equal? (candidate '(4 2 1 0 3)) '(3 2 1 1 0))
+       (equal? (candidate '(4 5 2 3 8 6 7 0 1)) '(7 7 2 2 0 0 1 1 0))
+       (equal? (candidate '(0 8 1 7 2 6 3 5 4)) '(0 1 2 3 4 3 2 1 0))
+       ;; These are from exercise 5.1.1.1.
+       (equal? (candidate '(1 6 2 4 3 0 7 5)) '(5 0 1 2 1 2 0 0))
+       (equal? (candidate '(1 6 0 7 3 4 8 2 5)) '(2 0 5 2 2 3 0 0 0))
+       ;; This is the example in the text Knuth uses.
+       (equal? (candidate  '(4 8 0 7 1 5 3 6 2)) '(2 3 6 4 0 2 2 1 0))))
+
 ;; A simple algorithm in O(n^2).
 
 ;; Scans a list until we find i and
@@ -188,13 +188,106 @@
 				  (visit vss (+ acc 1))
 				  (visit vss acc))))))])
     (visit vs 0)))
-	   
+
 ;; TODO: Fuse iota and length.
 
 (define (perm-to-inv vs)
   (map (lambda (i) (more-than-i i vs)) (iota (length vs))))
-  
+
 (unless (time (test-perm-to-inv perm-to-inv))
   (errorf 'perm-to-inv "failed its unit tests."))
 
 ;; A better algorithm is based on modifying merge sort.
+
+;; TODO: Replace calls to length with a single call to length
+;;       at the outset.
+
+(define (merge-invs vs ws vs-len)
+  (if (null? vs)
+      ws
+      (if (null? ws)
+	  vs
+	  (let* ([v (car vs)]
+		 [vss (cdr vs)]
+		 [w (car ws)]
+		 [wss (cdr ws)]
+		 [vn (car v)]
+		 [v-count (cdr v)]
+		 [wn (car w)]
+		 [w-count (cdr w)])
+	    (if (<= vn wn)
+		(cons (cons vn v-count)
+		      (merge-invs vss ws (- vs-len 1)))
+		(cons (cons wn (+ w-count vs-len)) 
+		      (merge-invs vs wss vs-len)))))))
+
+;; For lists of odd length, the first half is longer.
+
+(define (half-list vs)
+  (letrec ([visit (lambda (sp fp b acc)
+		   (if (null? fp)
+		       (cons (reverse acc) sp)
+		       (let ([f (car fp)]
+			     [fpp (cdr fp)])
+			 (if b
+			     (visit sp fpp (not b) acc)
+			     (let ([s (car sp)]
+				   [spp (cdr sp)])
+			       (visit spp fpp (not b) (cons s acc)))))))])
+    (visit vs vs #f '())))
+	
+(define (perm-to-inv-merge vs)
+  (letrec ([visit (lambda (ws ws-len)
+		    (if (<= ws-len 1)
+			ws
+			(let* ([split (half-list ws)]
+			       [front (car split)]
+			       [back (cdr split)]
+			       [half-len (div ws-len 2)])
+			  (if (= ws-len (* 2 half-len))
+			      (merge-invs (visit front half-len)
+					  (visit back half-len)
+					  half-len)
+			      (merge-invs (visit front (+ 1 half-len))
+					  (visit back half-len)
+					  (+ 1 half-len))))))])
+    (let* ([vs-len (length vs)]
+	   [zipped (map (lambda (x) (cons x 0)) vs)]
+	   [unzipped (map (lambda (x) (cdr x)) (visit zipped vs-len))])
+      unzipped)))
+
+(unless (time (test-perm-to-inv perm-to-inv-merge))
+  (errorf 'perm-to-inv-merge "failed its unit tests."))
+
+;; So now we have an algorithm which converts permutations
+;; to inversion tables in O(nlogn).
+
+;; Inverse of a permutation. Knuth's method is essentially
+;; based on doing a zip (to bring us to two line notation)
+;; and then sort the elements on the first line.
+
+;; TODO: Modify to use merged iota and length.
+;; TODO: Implement Fisher-Yates shuffle from section 3.4.2
+
+(define (test-inverse-perm candidate)
+  (and (equal? (candidate '()) '())
+       (equal? (candidate '(1 2 0)) '(2 0 1))
+       (equal? (candidate '(2 0 1)) '(1 2 0))
+       (equal? (candidate '(0 1 2 3 4)) '(0 1 2 3 4))
+       (equal? (candidate '(2 7 4 9 8 3 5 0 6 1)) '(7 9 0 5 2 6 8 1 4 3))
+       (equal? (candidate '(7 9 0 5 2 6 8 1 4 3)) '(2 7 4 9 8 3 5 0 6 1))
+       (equal? (candidate '(3 4 5 2 1 0)) '(5 4 3 0 1 2))
+       (equal? (candidate '(5 4 3 0 1 2)) '(3 4 5 2 1 0))
+       (equal? (candidate '(3 1 0 2 4)) '(2 1 3 0 4))
+       (equal? (candidate '(2 1 3 0 4)) '(3 1 0 2 4))
+       ;; This is the example in the text Knuth uses.
+       (equal? (candidate '(4 8 0 7 1 5 3 6 2)) '(2 4 8 6 0 5 7 3 1))))
+
+(define (inverse-perm perm)
+  (let* ([zipped (map (lambda (x y) (cons x y)) perm (iota (length perm)))]
+	 [sorted (sort (lambda (x y) (< (car x) (car y))) zipped)]
+	 [unzipped (map (lambda (x) (cdr x)) sorted)])
+    unzipped))
+
+(unless (time (test-inverse-perm inverse-perm))
+  (errorf 'inverse-perm "failed its unit tests."))
